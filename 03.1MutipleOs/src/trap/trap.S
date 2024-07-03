@@ -43,12 +43,12 @@ __restore:
     mv sp, a0       # 将sp 指向a0
     # now sp->kernel stack(after allocated), sscratch->user stack
     # restore sstatus/sepc
-    ld t0, 32*8(sp) # 初始化t0
-    ld t1, 33*8(sp) # 初始化t1
-    ld t2, 2*8(sp)  # 用户栈
-    csrw sstatus, t0 # 初始化sstatus,设置到用户态
-    csrw sepc, t1       # 初始化 sepc， 运行到 sret的时候会跳转
-    csrw sscratch, t2   # 设置 用户栈
+    ld t0, 32*8(sp) # 还原t0
+    ld t1, 33*8(sp) # 还原t1
+    ld t2, 2*8(sp)  # 还原t2
+    csrw sstatus, t0 # 还原status
+    csrw sepc, t1       # 还原sepc
+    csrw sscratch, t2   # 还原sscratch
     # restore general-purpuse registers except sp/tp
     ld x1, 1*8(sp)      # 还原x1, x2是sp栈寄存器，不需要保存
     ld x3, 3*8(sp)      # 还原 x3， x4是线程相关寄存器
@@ -58,7 +58,7 @@ __restore:
         .set n, n+1
     .endr
     # release TrapContext on kernel stack
-    addi sp, sp, 34*8   # 回收栈
+    addi sp, sp, 34*8   
     # now sp->kernel stack, sscratch->user stack
     csrrw sp, sscratch, sp  # 交换用户和内核栈指针
     sret     # 运行结束，返回u特权级别继续执行
