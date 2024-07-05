@@ -40,7 +40,7 @@ __alltraps:
 __restore:
     # case1: start running app by __restore
     # case2: back to U after handling trap
-    mv sp, a0       # 将sp 指向a0
+    # mv sp, a0       # 将sp 指向a0, 在多任务切换时，换栈的操作发生在任务切换的时候
     # now sp->kernel stack(after allocated), sscratch->user stack
     # restore sstatus/sepc
     ld t0, 32*8(sp) # 还原t0
