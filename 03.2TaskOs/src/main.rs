@@ -17,6 +17,11 @@ mod sync;
 mod syscall;
 mod trap;
 mod task;
+mod timer;
+mod config;
+
+#[path = "boards/qemu.rs"]
+mod board;
 
 
 use log::*;
@@ -43,6 +48,8 @@ pub fn rust_main() -> ! {
 
     trap::init();
     loader::init();
+    trap::enable_timer_interrupt();
+    timer::set_next_trigger();
     task::run_first_task();
     panic!("Unreachable in rust_main!");
 }

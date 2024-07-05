@@ -2,7 +2,7 @@
 
 
 build:
-	# cd ../03.1MutipleUser && make build
+	# cd ../03.2MutipleUser && make build
 	
 	# 编译内核
 	cargo build --release

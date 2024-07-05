@@ -4,20 +4,15 @@
 #[macro_use]
 extern crate user_lib;
 
-use user_lib::yield_;
-
-const WIDTH: usize = 10;
-const HEIGHT: usize = 3;
+use user_lib::{get_time, yield_};
 
 #[no_mangle]
 fn main() -> i32 {
-    for i in 0..HEIGHT {
-        for _ in 0..WIDTH {
-            print!("C");
-        }
-        println!(" [{}/{}]", i + 1, HEIGHT);
+    let current_timer = get_time();
+    let wait_for = current_timer + 3000;
+    while get_time() < wait_for {
         yield_();
     }
-    println!("Test write_c OK!");
+    println!("Test sleep OK!");
     0
 }
