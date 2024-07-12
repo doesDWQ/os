@@ -14,19 +14,19 @@ _num_app:
     .global app_0_start
     .global app_0_end
 app_0_start:
-    .incbin "../03.2TaskUser/target/riscv64gc-unknown-none-elf/release/00write_a.bin" # .incbin指令，将文件处的内容插入到目标中
+    .incbin "../04MemoryUser/target/riscv64gc-unknown-none-elf/release/00write_a" # .incbin指令，将文件处的内容插入到目标中
 app_0_end:
 
     .section .data
     .global app_1_start
     .global app_1_end
 app_1_start:
-    .incbin "../03.2TaskUser/target/riscv64gc-unknown-none-elf/release/01write_b.bin"
+    .incbin "../04MemoryUser/target/riscv64gc-unknown-none-elf/release/01write_b"
 app_1_end:
 
     .section .data
     .global app_2_start
     .global app_2_end
 app_2_start:
-    .incbin "../03.2TaskUser/target/riscv64gc-unknown-none-elf/release/02write_c.bin"
+    .incbin "../04MemoryUser/target/riscv64gc-unknown-none-elf/release/02write_c"
 app_2_end:

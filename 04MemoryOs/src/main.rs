@@ -31,6 +31,9 @@ extern crate alloc;
 use log::*;
 use mm::remap_test;
 
+#[macro_use]
+extern crate bitflags;
+
 use core::arch::global_asm;
 global_asm!(include_str!("entry.asm"));
 global_asm!(include_str!("linker_app.S"));
