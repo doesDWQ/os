@@ -3,7 +3,7 @@ mod context;
 mod switch;
 mod task;
 
-
+use alloc::vec::Vec;
 use context::TaskContext;
 use lazy_static::*;
 use switch::__switch;
@@ -25,7 +25,7 @@ impl TaskManager {
         let task0 = &mut inner.tasks[0];
 
         task0.task_status = TaskStatus::Runding;
-        let mut _unsed: TaskContext = TaskContext::zero_init();
+        let mut _unsed = TaskContext::zero_init();
         let next_task_cx_ptr = &task0.task_cx as *const TaskContext;
         drop(inner);
 
@@ -74,41 +74,61 @@ impl TaskManager {
             shutdown(false);
         }
     }
+
+    fn get_current_token(&self) -> usize {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].get_user_token()
+    }
+
+    fn get_current_trap_cx(&self) -> &mut TrapContext {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].get_trap_cx()
+    }
 }
 
 struct TaskManagerInner {
-    tasks: [TaskControlBlock; Max_app_num],
+    tasks: Vec<TaskControlBlock>,
     current_task: usize,
 }
 
-use crate::{loader::{get_num_app, init_app_cx, Max_app_num}, sbi::shutdown, sync::UPSafeCell};
+use crate::{loader::{get_app_data, get_num_app}, sbi::shutdown, sync::UPSafeCell, trap::TrapContext};
 
 lazy_static! {
     pub static ref TASK_MANAGER: TaskManager = {
+        println!("init Task_manager");
         let num_app = get_num_app();
-        let mut tasks = [
-            TaskControlBlock{
-                task_status: TaskStatus::UnInit,
-                task_cx: TaskContext::zero_init(),
-            }
-            ;Max_app_num
-        ];
+        println!("num_app={}", num_app);
 
-        for (i, task) in tasks.iter_mut().enumerate() {
-            task.task_cx = TaskContext::goto_restore(init_app_cx(i));
-            task.task_status = TaskStatus::Ready;
+        let mut tasks: Vec<TaskControlBlock> = Vec::new();
+
+        for i in 0..num_app{
+            tasks.push(TaskControlBlock::new(
+                get_app_data(i),
+                i,
+            ))
         }
 
         TaskManager{
             num_app,
             inner: unsafe {
-                UPSafeCell::new(TaskManagerInner {
+                UPSafeCell::new(TaskManagerInner{
                     tasks,
                     current_task:0,
                 })
             }
         }
     };
+}
+
+
+pub fn current_user_token() -> usize {
+    TASK_MANAGER.get_current_token()
+}
+
+pub fn current_trap_cx() -> &'static mut TrapContext {
+    TASK_MANAGER.get_current_trap_cx()
 }
 
 

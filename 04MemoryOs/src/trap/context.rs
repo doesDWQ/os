@@ -11,6 +11,12 @@ pub struct TrapContext {
 
     // csr sepc
     pub sepc: usize,
+
+    pub kernel_satp: usize,
+
+    pub kernel_sp: usize,
+
+    pub trap_handler: usize,
 }
 
 impl TrapContext {
@@ -19,7 +25,13 @@ impl TrapContext {
     }
 
     // 初始化当前context 上下文
-    pub fn app_init_context(entry: usize, sp:usize ) -> Self {
+    pub fn app_init_context(
+        entry: usize, 
+        sp:usize,
+        kernel_satp: usize,
+        kernel_sp: usize,
+        trap_handler: usize,
+    ) -> Self {
         // 获取当前特权等级
         let mut sstatus = sstatus::read();
         // 修改为用户特权级别
@@ -27,8 +39,11 @@ impl TrapContext {
 
         let mut cx = Self {
             x: [0; 32],
-            sstatus,        // 设置用户态，供sret使用
-            sepc:entry,     // 设置sret后的地址
+            sstatus,
+            sepc:entry,
+            kernel_satp,
+            kernel_sp,
+            trap_handler,
         };
 
         // 设置sp指针
