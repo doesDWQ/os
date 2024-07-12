@@ -2,7 +2,7 @@ use super::{address::{PhysPageNum, StepByOne, VirtPageNum}, frame_allocator::fra
 
 
 
-#[derive(Copy, Clone)] // 使用copy， clone 两个trait就会保证在传递参数时所有权不会转移
+#[derive(Copy, Clone, Debug)] // 使用copy， clone 两个trait就会保证在传递参数时所有权不会转移
 pub struct PageTableEntry {
     pub bits: usize
 }
@@ -40,11 +40,11 @@ impl PageTableEntry {
     }
 
     pub fn readable(&self) -> bool {
-        (self.flags() & PTEFlags::W) != PTEFlags::empty()
+        (self.flags() & PTEFlags::R) != PTEFlags::empty()
     }
 
     pub fn writeable(&self) -> bool {
-        (self.flags() & PTEFlags::X) != PTEFlags::empty()
+        (self.flags() & PTEFlags::W) != PTEFlags::empty()
     }
 
     pub fn executeable(&self) -> bool {

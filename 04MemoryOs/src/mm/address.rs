@@ -2,7 +2,7 @@
 
 use core::fmt::{self, Debug, Formatter};
 
-use crate::config::{PAGE_SIZE_BITS};
+use crate::config::PAGE_SIZE_BITS;
 
 use super::page_table::PageTableEntry;
 
@@ -64,7 +64,7 @@ impl VirtAddr {
 
 impl From<usize> for VirtAddr {
     fn from(v: usize) -> Self {
-        Self (v & (1 << VPN_WIDTH_SV39) - 1)
+        Self (v & (1 << PA_WIDTH_SV39) - 1)
     }
 }
 

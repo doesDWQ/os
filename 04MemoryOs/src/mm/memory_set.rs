@@ -250,7 +250,7 @@ impl MemorySet {
                 MapType::Identical,
                 MapPermission::R | MapPermission::W,
                 ), None);
-            
+        
         println!("mapping physical memory");
         memory_set.push(
             MapArea::new(
@@ -354,16 +354,17 @@ pub fn remap_test() {
     let mid_rodata: VirtAddr = ((srodata as usize + erodata as usize) /2 ).into();
     let mid_data: VirtAddr = ((sdata as usize + edata as usize) / 2).into();
 
-    assert_eq!(
-        kernel_space.page_table.translate(mid_text.floor()).unwrap().writeable(), false
+    assert!(
+        !kernel_space.page_table.translate(mid_text.floor()).unwrap().writeable(),
     );
 
-    assert_eq!(
-        kernel_space.page_table.translate(mid_rodata.floor()).unwrap().writeable(), false
+    println!("mid_rodata:{:?}", mid_rodata);
+    assert!(
+        !kernel_space.page_table.translate(mid_rodata.floor()).unwrap().writeable(),
     );
 
-    assert_eq!(
-        kernel_space.page_table.translate(mid_data.floor()).unwrap().executeable(), false
+    assert!(
+        !kernel_space.page_table.translate(mid_data.floor()).unwrap().executeable(),
     );
 
     println!("remap_test passed!");
