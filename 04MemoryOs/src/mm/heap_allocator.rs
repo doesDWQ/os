@@ -1,7 +1,7 @@
-use buddy_system_allocator::LockedHeap;
-use crate::config::KERNEL_HEAP_SIZE;
+// 该文件已人工核对过
 
-// 该文件代码已通过test验证过
+use crate::config::KERNEL_HEAP_SIZE;
+use buddy_system_allocator::LockedHeap;
 
 // 内存管理器
 #[global_allocator]
@@ -39,22 +39,19 @@ pub fn heap_test() {
 
     let a = Box::new(5);
 
-    println!("{:#x?}", bss_range);
     assert_eq!(*a, 5);
 
     let ptr = &(a.as_ref() as *const _ as usize);
-    println!("{:#x}", ptr);
     assert!(bss_range.contains(ptr));
     drop(a);
 
     let mut v: Vec<usize> = Vec::new();
-
     for i in 0..500 {
         v.push(i);
     }
 
-    for i in 0..500 {
-        assert_eq!(v[i], i);
+    for (i, val) in v.iter().take(500).enumerate() {
+        assert_eq!(*val, i);
     }
 
     assert!(bss_range.contains(&(v.as_ptr() as usize)));

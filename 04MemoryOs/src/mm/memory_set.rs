@@ -109,7 +109,21 @@ impl MapArea {
         }
     }
 
+    #[allow(unused)]
+    pub fn shrink_to(&mut self, page_table: &mut PageTable, new_end: VirtPageNum) {
+        for vpn in VPNRange::new(new_end, self.vpn_range.get_end()) {
+            self.unmap_one(page_table, vpn)
+        }
+        self.vpn_range = VPNRange::new(self.vpn_range.get_start(), new_end);
+    }
 
+    #[allow(unused)]
+    pub fn append_to(&mut self, page_table: &mut PageTable, new_end:VirtPageNum) {
+        for vpn in VPNRange::new(self.vpn_range.get_end(), new_end){
+            self.map_one(page_table, vpn)
+        }
+        self.vpn_range = VPNRange::new(self.vpn_range.get_start(), new_end);
+    }
 
 }
 
@@ -178,9 +192,33 @@ impl MemorySet {
         self.page_table.translate(vpn)
     }
 
-    // pub fn new_kernel() -> Self;
+    #[allow(unused)]
+    pub fn shrink_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {
+        if let Some(area) = self
+            .areas
+            .iter_mut()
+            .find(|area| area.vpn_range.get_start() == start.floor())
+        {
+            area.shrink_to(&mut self.page_table, new_end.ceil());
+            true
+        } else{
+            false
+        }
+    }
 
-    // pub fn from_elf(elf_data: &[u8]) -> (Self, usize, usize);
+    #[allow(unused)]
+    pub fn append_to(&mut self, start: VirtAddr, new_end: VirtAddr) -> bool {
+        if let Some(area) = self
+            .areas
+            .iter_mut()
+            .find(|area| area.vpn_range.get_start() == start.floor())
+        {
+            area.append_to(&mut self.page_table, new_end.ceil());
+            true
+        } else {
+            false
+        }
+    }
 }
 
 
