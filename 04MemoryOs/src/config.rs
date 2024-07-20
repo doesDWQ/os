@@ -1,7 +1,7 @@
 // 该文件已人工核对过
 //! Constants used in rCore
 
-pub const USER_STACK_SIZE: usize = 4096;
+pub const USER_STACK_SIZE: usize = 4096 * 2;
 pub const KERNEL_STACK_SIZE: usize = 4096 * 2;
 pub const KERNEL_HEAP_SIZE: usize = 0x30_0000;
 pub const PAGE_SIZE: usize = 0x1000;
@@ -13,7 +13,7 @@ pub const TRAP_CONTEXT: usize = TRAMPOLINE - PAGE_SIZE;
 
 pub fn kernel_stack_position(app_id: usize) -> (usize, usize) {
     let top = TRAMPOLINE - app_id * (KERNEL_STACK_SIZE + PAGE_SIZE);
-    let bottom = top - KERNEL_HEAP_SIZE;
+    let bottom = top - KERNEL_STACK_SIZE;
     (bottom, top)
 }
 
