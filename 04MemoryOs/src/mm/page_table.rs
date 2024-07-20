@@ -1,8 +1,27 @@
-use super::{address::{PhysPageNum, StepByOne, VirtPageNum}, frame_allocator::frame_alloc, FrameTracker, VirtAddr};
+
+// 该文件已人工核对过
+
+use super::{frame_alloc, FrameTracker, PhysPageNum, StepByOne, VirtAddr, VirtPageNum};
+use alloc::vec;
+use alloc::vec::Vec;
+use bitflags::*;
 
 
+bitflags! {
+    pub struct PTEFlags: u8 {
+        const V = 1 << 0;   // 当该位为1时，页表项才是合法的
+        const R = 1 << 1;   // 控制索引到这个页表项的对应的虚拟页面是否允许读
+        const W = 1 << 2;   // 控制索引到这个页表项的对应的虚拟页面是否允许写
+        const X = 1 << 3;   // 控制索引到这个页表项的对应的虚拟页面是否允许执行
+        const U = 1 << 4;   // 控制索引到这个页表项的对应的虚拟页面是否处于U特权级情况下是否被允许访问
+        const G = 1 << 5;   // 暂时不理会
+        const A = 1 << 6;   // 处理器自动更新，表示该页表项对应的虚拟页面是否被访问过
+        const D = 1 << 7;   // 处理器自动更新，表示该页表项对应的虚拟页面是否被修改过
+    }
+}
 
-#[derive(Copy, Clone, Debug)] // 使用copy， clone 两个trait就会保证在传递参数时所有权不会转移
+#[derive(Copy, Clone)] // 使用copy， clone 两个trait就会保证在传递参数时所有权不会转移
+#[repr(C)]      // 这个蛮重要的，以c的方式存储机构提
 pub struct PageTableEntry {
     pub bits: usize
 }
@@ -53,27 +72,6 @@ impl PageTableEntry {
 }
 
 
-extern crate bitflags;
-
-use alloc::vec;
-use alloc::vec::Vec;
-use bitflags::*;
-
-bitflags! {
-    pub struct PTEFlags: u8 {
-        const V = 1 << 0;   // 当该位为1时，页表项才是合法的
-        const R = 1 << 1;   // 控制索引到这个页表项的对应的虚拟页面是否允许读
-        const W = 1 << 2;   // 控制索引到这个页表项的对应的虚拟页面是否允许写
-        const X = 1 << 3;   // 控制索引到这个页表项的对应的虚拟页面是否允许执行
-        const U = 1 << 4;   // 控制索引到这个页表项的对应的虚拟页面是否处于U特权级情况下是否被允许访问
-        const G = 1 << 5;   // 暂时不理会
-        const A = 1 << 6;   // 处理器自动更新，表示该页表项对应的虚拟页面是否被访问过
-        const D = 1 << 7;   // 处理器自动更新，表示该页表项对应的虚拟页面是否被修改过
-    }
-}
-
-
-
 pub struct PageTable {
     root_ppn: PhysPageNum,
     frames: Vec<FrameTracker>,
@@ -91,26 +89,32 @@ impl PageTable {
         }
     }
 
+    // 通过satp临时穿件一个用来手动页表的pageTable
+    pub fn from_token(satp: usize) -> Self {
+        Self {
+            root_ppn: PhysPageNum::from(satp & ((1usize << 44) -1)),
+            frames: Vec::new(),
+        }
+    }
+
     // 通过vpn搜索到实际控制的最底层的4k内存节点，不存在就创建
     fn find_pte_create(&mut self, vpn: VirtPageNum) -> Option<&mut PageTableEntry> {
         let idxs = vpn.indexes();
         let mut ppn = self.root_ppn;
         let mut result: Option<&mut PageTableEntry> = None;
 
-        for i in 0..3 {
-            let pte = &mut ppn.get_pte_array()[idxs[i]];
-
+        for (i, idx) in idxs.iter().enumerate() {
+            let pte = &mut ppn.get_pte_array()[*idx];
             if i == 2 {
                 result = Some(pte);
                 break;
             }
-
             if !pte.is_valid() {
                 let frame = frame_alloc().unwrap();
                 *pte = PageTableEntry::new(frame.ppn, PTEFlags::V);
                 self.frames.push(frame);
             }
-            ppn= pte.ppn();
+            ppn = pte.ppn();
         }
 
         result
@@ -122,9 +126,8 @@ impl PageTable {
         let mut ppn = self.root_ppn;
         let mut result: Option<&mut PageTableEntry> = None;
 
-        for i in 0..3 {
-            let pte = &mut ppn.get_pte_array()[idxs[i]];
-
+        for (i, idx) in idxs.iter().enumerate() {
+            let pte = &mut ppn.get_pte_array()[*idx];
             if i == 2 {
                 result = Some(pte);
                 break;
@@ -137,6 +140,7 @@ impl PageTable {
     }
 
     // 最底层的结点指针和实际的物理内存页关联上
+    #[allow(unused)]
     pub fn map(&mut self, vpn: VirtPageNum, ppn: PhysPageNum, flags: PTEFlags) {
         let pte = self.find_pte_create(vpn).unwrap();
         assert!(!pte.is_valid(), "vpn {:?} is mapped bofore mapping", vpn);
@@ -144,23 +148,17 @@ impl PageTable {
     }
     
     // 最底层的结点指针和实际的物理内存页释放掉关系
+    #[allow(unused)]
     pub fn unmap(&mut self, vpn:VirtPageNum) {
         let pte = self.find_pte(vpn).unwrap();
         assert!(pte.is_valid(), "vpn {:?} is invaild before unmapping", vpn);
         *pte = PageTableEntry::empty();
     }
 
-    // 通过satp临时穿件一个用来手动页表的pageTable
-    pub fn from_token(satp: usize) -> Self {
-        Self {
-            root_ppn: PhysPageNum::from(satp & ((1usize << 44) -1)),
-            frames: Vec::new(),
-        }
-    }
-
+    
     // 通过vpn查询到pageTableTntry
     pub fn translate(&self, vpn: VirtPageNum) -> Option<PageTableEntry> {
-        self.find_pte(vpn).map(|pte: &mut PageTableEntry| pte.clone())
+        self.find_pte(vpn).map(|pte| *pte)
     }
 
     // 安装satp csr要求构造 64 位无符号整数，使得其分页模式为 SV39 

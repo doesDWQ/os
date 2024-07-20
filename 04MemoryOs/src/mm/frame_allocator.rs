@@ -1,10 +1,9 @@
 // 该文件已人工核对过
 
-use super::address::PhysPageNum;
+use super::address::{PhysAddr, PhysPageNum};
 use crate::config::MEMORY_END;
 use crate::sync::UPSafeCell;
 use alloc::vec::Vec;
-use crate::{mm::address::PhysAddr, };
 use core::fmt::{self, Debug, Formatter};
 use lazy_static::*;
 

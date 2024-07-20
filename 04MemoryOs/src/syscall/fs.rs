@@ -1,4 +1,4 @@
-//! File and filesystem-related syscalls
+// 该文件已人工核对过
 
 use crate::mm::translated_byte_buffer;
 use crate::task::current_user_token;
