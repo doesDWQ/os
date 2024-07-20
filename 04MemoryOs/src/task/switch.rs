@@ -1,13 +1,9 @@
+// 该文件已人工核对过
 
-use core::arch::global_asm;
 
+core::arch::global_asm!(include_str!("switch.S"));
 use super::context::TaskContext;
 
-global_asm!(include_str!("switch.S"));
-
 extern "C" {
-    pub fn __switch(
-        current_task_cx_ptr: *mut TaskContext,
-        next_task_cx_ptr: *const TaskContext,
-    );
+    pub fn __switch(current_task_cx_ptr: *mut TaskContext,next_task_cx_ptr: *const TaskContext);
 }

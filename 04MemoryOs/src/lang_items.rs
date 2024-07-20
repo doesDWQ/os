@@ -1,15 +1,16 @@
+// 该文件已人工核对过
 
+use crate::sbi::shutdown;
 use core::panic::PanicInfo;
 use log::*;
-use super::*;
-use sbi::shutdown;
+
 
 #[panic_handler]
 fn panic (info: &PanicInfo) -> ! {
     if let Some(location) = info.location() {
-        println!("Panicked at file: {}, line: {}, message: {}", location.file(), location.line(), info.message().unwrap());
+        error!("Panicked at file: {}, line: {}, message: {}", location.file(), location.line(), info.message().unwrap());
     } else {
-        println!("Panicked: {}", info.message().unwrap());
+        error!("Panicked: {}", info.message().unwrap());
     }
 
     shutdown(true)

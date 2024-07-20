@@ -1,16 +1,15 @@
+// 该文件已人工核对过
 
 
-
-#[allow(warnings)]
+use crate::sbi::console_putchar;
 
 use core::fmt::{self, Write};
 
-use crate::sbi::console_putchar;
 
 struct Stdout;
 
 impl Write for Stdout {
-    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
         for c in s.chars() {
            console_putchar(c as usize); 
         }

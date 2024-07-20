@@ -1,4 +1,4 @@
-
+// 该文件已人工核对过
 
 pub fn get_num_app() -> usize {
     extern "C" {

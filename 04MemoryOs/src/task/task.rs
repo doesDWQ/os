@@ -1,20 +1,10 @@
-
-
-
-use crate::config::{kernel_stack_position, TRAP_CONTEXT};
-use crate::trap::{trap_handler, TrapContext};
-use crate::mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
+// 该文件已人工核对过
 
 use super::context::TaskContext;
+use crate::config::{kernel_stack_position, TRAP_CONTEXT};
+use crate::mm::{MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE};
+use crate::trap::{trap_handler, TrapContext};
 
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum TaskStatus {
-    UnInit,     // 未初始化
-    Ready,      // 准备运行
-    Runding,    // 正在运行
-    Exited,     // 已退出
-}
 
 pub struct TaskControlBlock {
     pub task_status: TaskStatus,
@@ -27,6 +17,7 @@ pub struct TaskControlBlock {
     pub heap_bootom: usize,
     pub program_brk: usize,
 }
+
 
 impl TaskControlBlock {
     pub fn get_trap_cx(&self) -> &'static mut TrapContext {
@@ -98,3 +89,12 @@ impl TaskControlBlock {
         }
     }
 }
+
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum TaskStatus {
+    Ready,      // 准备运行
+    Runding,    // 正在运行
+    Exited,     // 已退出
+}
+

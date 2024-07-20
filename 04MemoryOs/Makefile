@@ -8,7 +8,7 @@ build:
 	cargo build --release
 
     # 去除elf中的头信息
-	rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/release/os -O binary target/riscv64gc-unknown-none-elf/release/os.bin
+	# rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/release/os -O binary target/riscv64gc-unknown-none-elf/release/os.bin
 
 run: build
 	qemu-system-riscv64 \
