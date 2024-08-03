@@ -1,7 +1,8 @@
 
 // 该文件已人工核对过
 
-use super::{frame_alloc, FrameTracker, PhysPageNum, StepByOne, VirtAddr, VirtPageNum};
+use super::{frame_alloc, FrameTracker, PhysAddr, PhysPageNum, StepByOne, VirtAddr, VirtPageNum};
+use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
 use bitflags::*;
@@ -21,7 +22,7 @@ bitflags! {
 }
 
 #[derive(Copy, Clone)] // 使用copy， clone 两个trait就会保证在传递参数时所有权不会转移
-#[repr(C)]      // 这个蛮重要的，以c的方式存储结构体
+#[repr(C)]      // 这个蛮重要的，以c的方式存储机结构体对象
 pub struct PageTableEntry {
     pub bits: usize
 }
@@ -73,8 +74,8 @@ impl PageTableEntry {
 
 
 pub struct PageTable {
-    root_ppn: PhysPageNum,
-    frames: Vec<FrameTracker>,
+    root_ppn: PhysPageNum,  // 根物理号
+    frames: Vec<FrameTracker>, // 保存所有的物理帧
 }
 
 // 实际上就是一颗树
@@ -89,7 +90,7 @@ impl PageTable {
         }
     }
 
-    // 通过satp临时穿件一个用来手动页表的pageTable
+    // 通过satp临时传递一个用来手动页表的pageTable
     pub fn from_token(satp: usize) -> Self {
         Self {
             root_ppn: PhysPageNum::from(satp & ((1usize << 44) -1)),
@@ -161,15 +162,30 @@ impl PageTable {
         self.find_pte(vpn).map(|pte| *pte)
     }
 
+    // 虚拟地址转换为物理地址
+    pub fn translate_va(&self, va: VirtAddr) -> Option<PhysAddr> {
+        self.find_pte(va.clone().floor()).map(|pte| {
+            let aligned_pa: PhysAddr = pte.ppn().into();
+
+            let offset = va.page_offset();
+            let aligned_pa_usize: usize = aligned_pa.into();
+            (aligned_pa_usize + offset).into()
+        })
+    }
+
     // 安装satp csr要求构造 64 位无符号整数，使得其分页模式为 SV39 
     pub fn token(&self) -> usize {
         8usize << 60 | self.root_ppn.0
     }
 }
 
+// 通过页表获取到管辖的byte列表
 pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&'static mut [u8]> {
+    // 获取到虚拟页表
     let page_table = PageTable::from_token(token);
+    // 虚拟开始地址
     let mut start = ptr as usize;
+    // 虚拟结束地址
     let end = start + len;
     let mut v = Vec::new();
 
@@ -190,4 +206,34 @@ pub fn translated_byte_buffer(token: usize, ptr: *const u8, len: usize) -> Vec<&
         start = end_va.into();
     }
     v
+}
+
+// 根据地址从页表中读取到一个字符串
+pub fn translated_str(token: usize, ptr: *const u8) -> String {
+    let page_table = PageTable::from_token(token);
+    let mut string = String::new();
+    let mut va = ptr as usize;
+    loop {
+        let ch: u8 = *(page_table.translate_va(VirtAddr::from(va)).unwrap().get_mut());
+
+        // 字符串是以0结尾的
+        if ch == 0 {
+            break;
+        } else {
+            string.push(ch as char);
+            va += 1;
+        }
+    }
+
+    string
+}
+
+// 根据地址获取指向实际地址的可变指针
+pub fn translated_refmut<T>(token: usize, ptr: *mut T) -> &'static mut T {
+    let page_table = PageTable::from_token(token);
+    let va = ptr as usize;
+
+    page_table
+    .translate_va(VirtAddr::from(va)).unwrap()
+    .get_mut()
 }

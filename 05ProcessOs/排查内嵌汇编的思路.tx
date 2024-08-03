@@ -1,0 +1,1 @@
+rust-objdump -all 01store_fault > a.txt 查看写入的内存位置是否正确！

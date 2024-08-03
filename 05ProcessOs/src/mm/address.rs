@@ -7,9 +7,9 @@ use core::fmt::{self, Debug, Formatter};
 
 
 const PA_WIDTH_SV39: usize = 56;    // 总地址长度
-const VA_WIDTH_SV39: usize = 39;    // 39位地址
-const PPN_WIDTH_SV39: usize = PA_WIDTH_SV39 - PAGE_SIZE_BITS;   // 实际页号存储范围
-const VPN_WIDTH_SV39: usize = VA_WIDTH_SV39 - PAGE_SIZE_BITS;   // 虚拟页号存储范围
+const VA_WIDTH_SV39: usize = 39;
+const PPN_WIDTH_SV39: usize = PA_WIDTH_SV39 - PAGE_SIZE_BITS;   // 虚拟地址长度
+const VPN_WIDTH_SV39: usize = VA_WIDTH_SV39 - PAGE_SIZE_BITS;
 
 // 物理地址
 #[derive(Copy, Clone, Ord, PartialOrd, PartialEq, Eq)]
@@ -57,21 +57,20 @@ impl From<usize> for PhysAddr {
     }
 }
 
-// 通过usize取出有用的虚拟地址号
+// 通过usize取出有用的27位虚拟地址号
 impl From<usize> for PhysPageNum {
     fn from(v: usize) -> Self {
         Self(v & ( (1 << PPN_WIDTH_SV39) -1  ))
     }
 }
 
-// 通过usize取出有用的物理地址
+
 impl From<usize> for VirtAddr {
     fn from(v: usize) -> Self {
         Self (v & (1 << PA_WIDTH_SV39) - 1)
     }
 }
 
-// 通过usize取出有用的物理号
 impl From<usize> for VirtPageNum {
     fn from(v: usize) -> Self {
         Self(v &((1 << VPN_WIDTH_SV39 ) -1))
@@ -92,7 +91,7 @@ impl From<PhysPageNum> for usize {
     }
 }
 
-// 物理地址获取对于的usize值
+
 impl From<VirtAddr> for usize {
     fn from(v: VirtAddr) -> Self {
         if v.0 >= (1 << (VA_WIDTH_SV39 - 1)) {
@@ -103,7 +102,6 @@ impl From<VirtAddr> for usize {
     }
 }
 
-// 需要页号获取对应的usize值
 impl From<VirtPageNum> for usize {
     fn from(v: VirtPageNum) -> Self {
         v.0
@@ -112,12 +110,9 @@ impl From<VirtPageNum> for usize {
 
 
 impl VirtAddr {
-    // 向下取出对应的虚拟地址号
     pub fn floor(&self) -> VirtPageNum {
         VirtPageNum(self.0 / PAGE_SIZE)
     }
-
-    // 向上取出对应的虚拟地址号
     pub fn ceil (&self) -> VirtPageNum {
         if self.0==0 {
             VirtPageNum(0)
@@ -125,19 +120,14 @@ impl VirtAddr {
             VirtPageNum((self.0 - 1 + PAGE_SIZE) / PAGE_SIZE)
         }
     }
-
-    // 获取页标
     pub fn page_offset(&self) -> usize {
         self.0 & (PAGE_SIZE - 1)
     }
-
     pub fn aligned(&self) -> bool {
         self.page_offset() == 0
     }
 }
 
-
-// 物理地址获取到物理地址号
 impl From<VirtAddr> for VirtPageNum {
     fn from(v: VirtAddr) -> Self {
         assert_eq!(v.page_offset() , 0);
@@ -145,7 +135,6 @@ impl From<VirtAddr> for VirtPageNum {
     }
 }
 
-// 虚拟号获取到虚拟地址
 impl From<VirtPageNum> for VirtAddr {
     fn from(v: VirtPageNum) -> Self {
         Self(v.0 << PAGE_SIZE_BITS)
@@ -154,23 +143,24 @@ impl From<VirtPageNum> for VirtAddr {
 
 
 impl PhysAddr {
-    // 向下取整获取到物理地址号
     pub fn floor(&self) -> PhysPageNum {
         PhysPageNum(self.0 / PAGE_SIZE)
     }
 
-    // 向上取整获取到物理地址号
     pub fn ceil(&self) -> PhysPageNum {
         PhysPageNum((self.0 + PAGE_SIZE -1)  / PAGE_SIZE)
     }
 
-    // 获取页标
     pub fn page_offset(&self) -> usize {
         self.0 & (PAGE_SIZE - 1)
     }
 
     pub fn aligned(&self) -> bool {
         self.page_offset() == 0
+    }
+
+    pub fn get_mut<T>(&self) -> &'static mut T {
+        unsafe { (self.0 as *mut T).as_mut().unwrap() }
     }
 }
 
@@ -192,7 +182,6 @@ impl From<PhysPageNum> for PhysAddr {
 }
 
 impl VirtPageNum {
-    // 通过虚拟页号，获取三级表
     pub fn indexes(&self) -> [usize; 3] {
         let mut vpn = self.0;
         let mut idx = [0usize; 3];
@@ -311,5 +300,4 @@ where
     }
 }
 
-// 虚拟页号迭代器
 pub type VPNRange = SimpleRange<VirtPageNum>;
