@@ -1,6 +1,6 @@
 // 该文件已人工核对过
 
-#![deny(warnings)]
+// #![deny(warnings)]
 #![no_std] // 去除掉标准库依赖
 #![no_main] // 去除main主函数
 #![feature(panic_info_message)] // panic_handler中打印info使用

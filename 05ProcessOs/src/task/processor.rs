@@ -57,7 +57,7 @@ pub fn run_tasks() {
             // 获取切换任务的上下文
             let next_task_cx_ptr = &task_inner.task_cx as *const TaskContext;
             // 任务状态设置为进行中
-            task_inner.task_status = TaskStatus::Runding;
+            task_inner.task_status = TaskStatus::Running;
 
             // 删除任务引用
             drop(task_inner);

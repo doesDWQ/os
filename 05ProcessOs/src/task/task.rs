@@ -116,6 +116,7 @@ impl TaskControlBlock {
 
         let mut inner = self.inner_exclusive_access();
 
+        inner.memory_set = memory_set;
         inner.trap_cx_ppn = trap_cx_ppn;
 
         let trap_cx = inner.get_trap_cx();
@@ -183,6 +184,6 @@ impl TaskControlBlock {
 #[derive(Copy, Clone, PartialEq)]
 pub enum TaskStatus {
     Ready,      // 准备运行
-    Runding,    // 正在运行
+    Running,    // 正在运行
     Zombie,     
 }
