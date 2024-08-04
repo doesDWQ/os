@@ -1,18 +1,18 @@
 
 
-
-mod processor;
+mod context;
 mod manager;
 mod pid;
-mod task;
+mod processor;
 mod switch;
-mod context;
+mod task;
 
+
+use crate::loader::get_app_data_by_name;
+use crate::sbi::shutdown;
 use alloc::sync::Arc;
 use lazy_static::*;
 use task::{TaskControlBlock, TaskStatus};
-use crate::{loader::get_app_data_by_name, sbi::shutdown};
-
 
 pub use context::TaskContext;
 pub use manager::add_task;
@@ -21,19 +21,6 @@ pub use processor::{
     current_task, current_trap_cx, current_user_token, run_tasks, schedule, take_current_task,
     Processor,
 };
-
-lazy_static! {
-    // 获取根程序
-    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(
-        TaskControlBlock::new(get_app_data_by_name("initproc").unwrap())
-    );
-}
-
-// 初始化根进程
-pub fn add_initproc() {
-    add_task(INITPROC.clone());
-}
-
 
 pub fn suspend_current_and_run_next() {
     let task = take_current_task().unwrap();
@@ -88,3 +75,16 @@ pub fn exit_current_and_run_next(exit_code: i32) {
 
     schedule(&mut _unused as *mut _);
 }
+
+lazy_static! {
+    // 获取根程序
+    pub static ref INITPROC: Arc<TaskControlBlock> = Arc::new(
+        TaskControlBlock::new(get_app_data_by_name("initproc").unwrap())
+    );
+}
+
+// 初始化根进程
+pub fn add_initproc() {
+    add_task(INITPROC.clone());
+}
+

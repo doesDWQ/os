@@ -1,9 +1,8 @@
-use alloc::{collections::VecDeque, sync::Arc};
-
-use crate::sync::UPSafeCell;
-
 use super::task::TaskControlBlock;
-
+use crate::sync::UPSafeCell;
+use alloc::collections::VecDeque;
+use alloc::sync::Arc;
+use lazy_static::*;
 
 pub struct TaskManager {
     ready_queue: VecDeque<Arc<TaskControlBlock>>, // 任务管理器中的双队列
@@ -27,8 +26,6 @@ impl TaskManager {
         self.ready_queue.pop_front()
     }
 }
-
-use lazy_static::*;
 
 lazy_static! {
     // 初始化任务管理器
