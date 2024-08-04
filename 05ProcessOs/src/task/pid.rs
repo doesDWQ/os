@@ -1,8 +1,7 @@
 use alloc::vec::Vec;
+use lazy_static::*;
+use crate::{config::{KERNEL_STACK_SIZE, PAGE_SIZE, TRAMPOLINE}, mm::{MapPermission, VirtAddr, KERNEL_SPACE}, sync::UPSafeCell};
 
-
-
-pub struct PidHandle(pub usize);
 
 pub struct PidAllocator {
     current: usize,
@@ -39,9 +38,6 @@ impl PidAllocator {
     }
 }
 
-use lazy_static::*;
-
-use crate::{config::{KERNEL_STACK_SIZE, PAGE_SIZE, TRAMPOLINE}, mm::{MapPermission, VirtAddr, KERNEL_SPACE}, sync::UPSafeCell};
 
 lazy_static! {
     static ref PID_ALLOCaTOR: UPSafeCell<PidAllocator> = unsafe {
@@ -49,9 +45,7 @@ lazy_static! {
     };
 }
 
-pub fn pid_alloc() -> PidHandle {
-    PID_ALLOCaTOR.exclusive_access().alloc()
-}
+pub struct PidHandle(pub usize);
 
 impl Drop for PidHandle {
     fn drop(&mut self) {
@@ -59,8 +53,8 @@ impl Drop for PidHandle {
     }
 }
 
-pub struct KernelStack {
-    pid: usize,
+pub fn pid_alloc() -> PidHandle {
+    PID_ALLOCaTOR.exclusive_access().alloc()
 }
 
 // 获取指定app_id的内核栈上下限
@@ -68,6 +62,10 @@ pub fn kernel_stack_position(app_id: usize) -> (usize, usize) {
     let top = TRAMPOLINE - app_id * (KERNEL_STACK_SIZE + PAGE_SIZE);
     let bottom = top-KERNEL_STACK_SIZE;
     (bottom, top)
+}
+
+pub struct KernelStack {
+    pid: usize,
 }
 
 impl KernelStack {

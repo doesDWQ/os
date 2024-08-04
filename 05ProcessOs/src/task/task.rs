@@ -1,11 +1,13 @@
-use crate::{config::TRAP_CONTEXT, mm::{MemorySet,PhysPageNum, VirtAddr, KERNEL_SPACE}, sync::UPSafeCell, trap::{trap_handler, TrapContext}};
 
-use super::pid::{pid_alloc, KernelStack,PidHandle};
-use core::cell::RefMut;
 use super::TaskContext;
+use super::pid::{pid_alloc, KernelStack,PidHandle};
+use crate::config::TRAP_CONTEXT;
+use crate::mm::{MemorySet,PhysPageNum, VirtAddr, KERNEL_SPACE};
+use crate::sync::UPSafeCell;
+use crate::trap::{trap_handler, TrapContext};
 use alloc::sync::{Arc, Weak};
 use alloc::vec::Vec;
-
+use core::cell::RefMut;
 
 pub struct TaskControlBlock {
     pub pid: PidHandle,
@@ -49,11 +51,6 @@ impl TaskControlBlock {
     pub fn inner_exclusive_access(&self) -> RefMut<'_, TaskControlBlockInner> {
         self.inner.exclusive_access()
     }
-
-    pub fn getpid(&self) -> usize {
-        self.pid.0
-    }
-
     
     pub fn new(elf_data: &[u8]) -> Self {
         // 获取一个内存集合，用户栈，程序执行入口点
@@ -175,6 +172,11 @@ impl TaskControlBlock {
         task_control_bloc
     }
 
+    
+    pub fn getpid(&self) -> usize {
+        self.pid.0
+    }
+
 }
 
 
@@ -184,21 +186,3 @@ pub enum TaskStatus {
     Runding,    // 正在运行
     Zombie,     
 }
-
-// pub fn take_current_task() -> Option<Arc<TaskControlBlock>> {
-//     PROCESSOR.exclusive_access().take_current()
-// }
-
-// pub fn current_task() -> Option<Arc<TaskControlBlock>> {
-//     PROCESSOR.exclusive_access().current()
-// }
-
-// pub fn current_user_token() -> usize {
-//     let task = current_task().unwrap();
-//     let token = task.inner_exclusive_access().get_user_token();
-//     token
-// }
-
-// pub fn current_trap_cx() -> &'static mut TrapContext {
-//     current_task().unwrap().inner_exclusive_access().get_trap_cx()
-// }

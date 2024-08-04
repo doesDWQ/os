@@ -1,4 +1,5 @@
 use alloc::sync::Arc;
+use lazy_static::*;
 
 use crate::{sync::UPSafeCell, trap::TrapContext};
 
@@ -30,34 +31,14 @@ impl Processor {
 
     // 获取当前任务上下文
     pub fn current(&self) -> Option<Arc<TaskControlBlock>> {
-        self.current.as_ref().map(|task| Arc::clone(task))
+        self.current.as_ref().map(Arc::clone)
     }
 }
-
-use lazy_static::*;
 
 lazy_static! {
     pub static ref PROCESSOR: UPSafeCell<Processor> =  unsafe {
         UPSafeCell::new(Processor::new())
     };
-}
-
-pub fn take_current_task() -> Option<Arc<TaskControlBlock>> {
-    PROCESSOR.exclusive_access().current()
-}
-
-pub fn current_task() -> Option<Arc<TaskControlBlock>> {
-    PROCESSOR.exclusive_access().current()
-}
-
-pub fn current_user_token() -> usize {
-    let task = current_task().unwrap();
-    let token = task.inner_exclusive_access().get_user_token();
-    token
-}
-
-pub fn current_trap_cx() -> &'static mut TrapContext {
-    current_task().unwrap().inner_exclusive_access().get_trap_cx()
 }
 
 
@@ -97,6 +78,24 @@ pub fn run_tasks() {
     }
 }
 
+
+pub fn take_current_task() -> Option<Arc<TaskControlBlock>> {
+    PROCESSOR.exclusive_access().current()
+}
+
+pub fn current_task() -> Option<Arc<TaskControlBlock>> {
+    PROCESSOR.exclusive_access().current()
+}
+
+pub fn current_user_token() -> usize {
+    let task = current_task().unwrap();
+    let token = task.inner_exclusive_access().get_user_token();
+    token
+}
+
+pub fn current_trap_cx() -> &'static mut TrapContext {
+    current_task().unwrap().inner_exclusive_access().get_trap_cx()
+}
 
 pub fn schedule(switched_task_cx_ptr: *mut TaskContext) {
     let mut processor: core::cell::RefMut<Processor> = PROCESSOR.exclusive_access();
