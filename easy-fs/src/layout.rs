@@ -124,7 +124,7 @@ impl DiskInode {
 
         if data_blocks > INDIRECT1_BOUND {
             total += 1;
-            total += (data_blocks - INDIRECT1_BOUND + INODE_INDIRECT1_COUNT -1) / INODE_INDIRECT1_COUNT
+            total += (data_blocks - INDIRECT1_BOUND + INODE_INDIRECT1_COUNT -1) / INODE_INDIRECT1_COUNT;
         }
 
         total as u32
@@ -211,7 +211,7 @@ impl DiskInode {
             }
 
             current_blocks -= INODE_INDIRECT1_COUNT as u32;
-            total_blocks -= INODE_DIRECT_COUNT as u32;
+            total_blocks -= INODE_INDIRECT1_COUNT as u32;
         } else {
             return;
         }
@@ -225,7 +225,7 @@ impl DiskInode {
              Arc::clone(block_device))
              .lock()
              .modify(0, |indirect2: &mut IndirectBlock| {
-                while ( a0 < a1 || a0 == a1 && b0 < b1 ) {
+                while ( a0 < a1 ) || (a0 == a1 && b0 < b1 ) {
                     if b0 == 0 {
                         indirect2[a0] = new_blocks.next().unwrap();
                     }

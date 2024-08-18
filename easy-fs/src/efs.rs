@@ -30,7 +30,7 @@ impl EasyFileSystem {
         let inode_total_blocks = inode_bitmap_blocks + inode_area_blocks;
         let data_total_blocks = total_blocks - 1 - inode_total_blocks;
         let data_bitmap_blocks = (data_total_blocks + 4096) / 4097;
-        let data_area_blocks = data_total_blocks - inode_bitmap_blocks;
+        let data_area_blocks = data_total_blocks - data_bitmap_blocks;
         let data_bitmap = Bitmap::new(
             (1 + inode_bitmap_blocks + inode_area_blocks)  as usize,
             data_bitmap_blocks as usize,
@@ -75,6 +75,8 @@ impl EasyFileSystem {
             disk_inode.initialize(DiskInodeType::Directory);
         });
 
+        block_cache_sync_all();
+
         Arc::new(Mutex::new(efs))
     }
 
@@ -84,7 +86,7 @@ impl EasyFileSystem {
         .lock()
         .read(0, |super_block: &SuperBlock| {
             assert!(super_block.is_valid(), "Error loading EFS!");
-            let inode_total_blocks = super_block.inode_area_blocks + super_block.inode_area_blocks;
+            let inode_total_blocks = super_block.inode_bitmap_blocks + super_block.inode_area_blocks;
 
             let efs: EasyFileSystem = Self {
                 block_device,
@@ -126,6 +128,9 @@ impl EasyFileSystem {
         self.inode_bitmap.alloc(&self.block_device).unwrap() as u32
     }
 
+    pub fn alloc_data(&mut self) -> u32 {
+        self.data_bitmap.alloc(&self.block_device).unwrap() as u32 + self.data_area_start_block
+    }
     
     pub fn dealloc_data(&mut self, block_id: u32) {
         get_block_cache(block_id as usize, 

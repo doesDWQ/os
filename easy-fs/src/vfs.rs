@@ -39,7 +39,7 @@ impl Inode {
     // 修改节点数据
     fn modify_disk_inode<V>(&self, f: impl FnOnce(&mut DiskInode) -> V) -> V {
         get_block_cache(self.block_id, Arc::clone(&self.block_device))
-        .lock().modify(self.block_id, f)
+        .lock().modify(self.block_offset, f)
     }
 
     // 查找一个节点
@@ -96,7 +96,7 @@ impl Inode {
         let blocks_needed = disk_inode.blocks_num_needed(new_size);
         let mut v: Vec<u32> = Vec::new();
         for _ in 0..blocks_needed {
-            v.push(fs.alloc_inode());
+            v.push(fs.alloc_data());
         }
         disk_inode.increase_size(new_size, v, &self.block_device);
     }
@@ -106,10 +106,11 @@ impl Inode {
     pub fn create(&self, name: &str) -> Option<Arc<Inode>> {
         let mut fs = self.fs.lock();
 
-        if self.modify_disk_inode(|root_inode| {
+        let op = |root_inode: &DiskInode| {
             assert!(root_inode.is_dir());
             self.find_inode_id(name, root_inode)
-        }).is_none() {
+        };
+        if self.read_disk_inode(op).is_some() {
             return None;
         }
 
@@ -128,13 +129,13 @@ impl Inode {
 
             self.increase_size(new_size as u32, root_inode, &mut fs);
 
-            let dirent = DirEntry::new(name, new_inode_block_id);
+            let dirent = DirEntry::new(name, new_inode_id);
             root_inode.write_at(file_count * DIRENT_SZ, 
                 dirent.as_bytes(), &self.block_device);
         });
 
         let (block_id, block_offset) = fs.get_disk_inode_pos(new_inode_id);
-
+        block_cache_sync_all();
         Some(Arc::new(Self::new(
             block_id,
             block_offset,
@@ -178,10 +179,12 @@ impl Inode {
     // 写入节点内容
     pub fn write_at(&self, offset: usize, buf: &[u8]) -> usize {
         let mut fs = self.fs.lock();
-        self.modify_disk_inode(|disk_inode| {
+        let size = self.modify_disk_inode(|disk_inode| {
             self.increase_size((offset + buf.len()) as u32, disk_inode, &mut fs);
             disk_inode.write_at(offset, buf, &self.block_device)
-        })
+        });
+        block_cache_sync_all();
+            size
     }
     
     // 清空节点内容
@@ -195,6 +198,7 @@ impl Inode {
                 fs.dealloc_data(data_block);
             }
         });
+        block_cache_sync_all();
     }
 
 }
