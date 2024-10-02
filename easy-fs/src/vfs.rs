@@ -1,4 +1,6 @@
-use super::{block_cache_sync_all, get_block_cache, BlockDevice, DirEntry, DiskInode, DiskInodeType, EasyFileSystem, DIRENT_SZ};
+use super::{block_cache_sync_all, get_block_cache, BlockDevice, DirEntry, DiskInode, DiskInodeType, 
+EasyFileSystem, DIRENT_SZ,
+};
 use alloc::string::String;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -31,30 +33,28 @@ impl Inode {
 
     // 读取节点数据
     fn read_disk_inode<V> (&self, f: impl FnOnce(&DiskInode) -> V) -> V {
-        get_block_cache(self.block_id, 
-            Arc::clone(&self.block_device))
-        .lock().read(self.block_offset, f)
+        get_block_cache(self.block_id, Arc::clone(&self.block_device))
+        .lock()
+        .read(self.block_offset, f)
     }
 
     // 修改节点数据
     fn modify_disk_inode<V>(&self, f: impl FnOnce(&mut DiskInode) -> V) -> V {
         get_block_cache(self.block_id, Arc::clone(&self.block_device))
-        .lock().modify(self.block_offset, f)
+        .lock()
+        .modify(self.block_offset, f)
     }
 
     // 查找一个节点
     fn find_inode_id(&self, name: &str, disk_inode: &DiskInode) -> Option<u32> {
         assert!(disk_inode.is_dir());
-        let file_count = (disk_inode.size as usize) / DIRENT_SZ;
+        let file_count: usize = (disk_inode.size as usize) / DIRENT_SZ;
         let mut dirent = DirEntry::empty();
 
         for i in 0..file_count {
             assert_eq!(
-                disk_inode.read_at(
-                    DIRENT_SZ * i, 
-                    dirent.as_bytes_mut(), 
-                    &self.block_device), 
-                DIRENT_SZ
+                disk_inode.read_at(DIRENT_SZ * i, dirent.as_bytes_mut(),&self.block_device), 
+                DIRENT_SZ,
             );
 
             if dirent.name() == name {
@@ -114,15 +114,18 @@ impl Inode {
             return None;
         }
 
+        // 获取到节点id
         let new_inode_id = fs.alloc_inode();
 
+        // 获取到目录磁盘节点
         let (new_inode_block_id, new_inode_block_offset) = fs.get_disk_inode_pos(new_inode_id);
-        get_block_cache(new_inode_block_id as usize, 
-        Arc::clone(&self.block_device))
-        .lock().modify(new_inode_block_offset, |new_inode: &mut DiskInode| {
+        get_block_cache(new_inode_block_id as usize, Arc::clone(&self.block_device))
+        .lock()
+        .modify(new_inode_block_offset, |new_inode: &mut DiskInode| {
             new_inode.initialize(DiskInodeType::File);
         });
 
+        // 目录内容写入磁盘
         self.modify_disk_inode(|root_inode| {
             let file_count = (root_inode.size as usize) / DIRENT_SZ;
             let new_size = (file_count + 1) * DIRENT_SZ;
@@ -130,18 +133,24 @@ impl Inode {
             self.increase_size(new_size as u32, root_inode, &mut fs);
 
             let dirent = DirEntry::new(name, new_inode_id);
-            root_inode.write_at(file_count * DIRENT_SZ, 
-                dirent.as_bytes(), &self.block_device);
+            root_inode.write_at(
+                file_count * DIRENT_SZ, 
+                dirent.as_bytes(),
+                &self.block_device,
+            );
         });
 
+        // 获取到新节点id
         let (block_id, block_offset) = fs.get_disk_inode_pos(new_inode_id);
         block_cache_sync_all();
+
+        // 返回新建的文件
         Some(Arc::new(Self::new(
             block_id,
             block_offset,
             self.fs.clone(),
-            self.block_device.clone(),)
-        ))
+            self.block_device.clone(),
+        )))
     }
 
 
@@ -156,10 +165,7 @@ impl Inode {
                 let mut dirent = DirEntry::empty();
 
                 assert_eq!(
-                    disk_inode.read_at(
-                        i * DIRENT_SZ, 
-                        dirent.as_bytes_mut(), 
-                        &self.block_device),
+                    disk_inode.read_at(i * DIRENT_SZ, dirent.as_bytes_mut(), &self.block_device),
                         DIRENT_SZ,
                 );
                 v.push(String::from(dirent.name()));
@@ -171,9 +177,7 @@ impl Inode {
     // 读取节点内容
     pub fn read_at(&self, offset: usize, buf: &mut [u8]) -> usize {
         let _fs = self.fs.lock();
-        self.read_disk_inode(|disk_inode| {
-            disk_inode.read_at(offset, buf, &self.block_device)
-        })
+        self.read_disk_inode(|disk_inode| disk_inode.read_at(offset, buf, &self.block_device))
     }
 
     // 写入节点内容

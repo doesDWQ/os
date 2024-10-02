@@ -1,5 +1,6 @@
 use super::{
-    block_cache_sync_all, get_block_cache, Bitmap, BlockDevice, DiskInode, DiskInodeType, Inode, SuperBlock,
+    block_cache_sync_all, get_block_cache, Bitmap, BlockDevice, DiskInode, DiskInodeType, Inode, 
+    SuperBlock,
 };
 use crate::BLOCK_SZ;
 use alloc::sync::Arc;
@@ -24,18 +25,26 @@ impl EasyFileSystem {
     ) -> Arc<Mutex<Self>> {
         let inode_bitmap = Bitmap::new(1, inode_bitmap_blocks as usize);
         let inode_num = inode_bitmap.maximum();
+        // 节点区域块数量
+        let inode_area_blocks = 
+		((inode_num * core::mem::size_of::<DiskInode>() + BLOCK_SZ - 1) / BLOCK_SZ) as u32;
 
-        let inode_area_blocks = ((inode_num * core::mem::size_of::<DiskInode>() + BLOCK_SZ - 1) / BLOCK_SZ) as u32;
-
+        // 节点占据总块数
         let inode_total_blocks = inode_bitmap_blocks + inode_area_blocks;
+        // 数据中占据总数
         let data_total_blocks = total_blocks - 1 - inode_total_blocks;
+        // 数据bitmap总块数, 加4096的目的是为了向上取整
         let data_bitmap_blocks = (data_total_blocks + 4096) / 4097;
+        // 数据区域占据总块数
         let data_area_blocks = data_total_blocks - data_bitmap_blocks;
+
+        // 数据bitmap
         let data_bitmap = Bitmap::new(
             (1 + inode_bitmap_blocks + inode_area_blocks)  as usize,
             data_bitmap_blocks as usize,
         );
 
+        // 新建efs
         let mut efs = Self {
             block_device: Arc::clone(&block_device),
             inode_bitmap,
@@ -44,16 +53,18 @@ impl EasyFileSystem {
             data_area_start_block: 1 + inode_total_blocks + data_bitmap_blocks,
         };
 
+        // 磁盘清空初始化为0
         for i in 0 .. total_blocks {
             get_block_cache(i as usize, Arc::clone(&block_device))
             .lock()
             .modify(0, |data_block: &mut DataBlock| {
                 for byte in data_block.iter_mut() { 
-                    *byte = 0
+                    *byte = 0;
                 }
             });
         }
 
+        // 写入superBlock块
         get_block_cache(0, Arc::clone(&block_device)).lock().modify(
             0,
             |super_block: &mut SuperBlock| {
@@ -62,9 +73,11 @@ impl EasyFileSystem {
                 inode_bitmap_blocks, 
                 inode_area_blocks,
                 data_bitmap_blocks, 
-                data_area_blocks);
+                data_area_blocks,
+	        );
         });
 
+        // 断言不等于0
         assert_eq!(efs.alloc_inode(), 0);
 
         let (root_inode_block_id, root_inode_offset) = efs.get_disk_inode_pos(0);
@@ -74,27 +87,29 @@ impl EasyFileSystem {
         .modify(root_inode_offset, |disk_inode: &mut DiskInode| {
             disk_inode.initialize(DiskInodeType::Directory);
         });
-
+        
+        // 修改数据落盘
         block_cache_sync_all();
 
         Arc::new(Mutex::new(efs))
     }
 
-    // 打开文件系统
+    // 加载文件系统
     pub fn open(block_device: Arc<dyn BlockDevice>) -> Arc<Mutex<Self>> {
         get_block_cache(0, Arc::clone(&block_device))
         .lock()
         .read(0, |super_block: &SuperBlock| {
             assert!(super_block.is_valid(), "Error loading EFS!");
-            let inode_total_blocks = super_block.inode_bitmap_blocks + super_block.inode_area_blocks;
-
-            let efs: EasyFileSystem = Self {
+            let inode_total_blocks = 
+	    	super_block.inode_bitmap_blocks + super_block.inode_area_blocks;
+		
+            let efs = Self {
                 block_device,
-                inode_bitmap: Bitmap::new(1, 
-                    super_block.inode_bitmap_blocks as usize),
+                inode_bitmap: Bitmap::new(1, super_block.inode_bitmap_blocks as usize),
                 data_bitmap: Bitmap::new(
                     (1 + inode_total_blocks) as usize, 
-                    super_block.data_bitmap_blocks as usize),
+                    super_block.data_bitmap_blocks as usize
+		        ),
                 inode_area_start_block: 1 + super_block.inode_bitmap_blocks,
                 data_area_start_block: 1 + inode_total_blocks + super_block.data_bitmap_blocks,
             };
@@ -109,13 +124,15 @@ impl EasyFileSystem {
         Inode::new(block_id, block_offset, Arc::clone(efs), block_device)
     }
 
-    // 获取磁盘节点位置
+    // 根据inode_id获取到，块位置，和块中偏移位置
     pub fn get_disk_inode_pos(&self, inode_id: u32) -> (u32, usize) {
         let inode_size = core::mem::size_of::<DiskInode>();
         let inodes_per_block = (BLOCK_SZ / inode_size) as u32;
         let block_id = self.inode_area_start_block + inode_id / inodes_per_block;
-
-        (block_id, (inode_id % inodes_per_block) as usize * inode_size)
+	    (
+		    block_id, 
+    		(inode_id % inodes_per_block) as usize * inode_size,
+	    )
     }
 
     // 获取数据块id
@@ -128,21 +145,24 @@ impl EasyFileSystem {
         self.inode_bitmap.alloc(&self.block_device).unwrap() as u32
     }
 
+    // 申请一个data node
     pub fn alloc_data(&mut self) -> u32 {
         self.data_bitmap.alloc(&self.block_device).unwrap() as u32 + self.data_area_start_block
     }
     
+    // 回收data节点数据
     pub fn dealloc_data(&mut self, block_id: u32) {
-        get_block_cache(block_id as usize, 
-        Arc::clone(&self.block_device)
-        ).lock()
+        get_block_cache(block_id as usize, Arc::clone(&self.block_device))
+	    .lock()
         .modify(0, |data_block: &mut DataBlock| {
             data_block.iter_mut().for_each(|p| {
-                *p = 0
+                *p = 0;
             })
         });
 
-        self.data_bitmap.dealloc(&self.block_device, 
-        (block_id - self.data_area_start_block) as usize)
+        self.data_bitmap.dealloc(
+	    &self.block_device, 
+        (block_id - self.data_area_start_block) as usize,
+	    )
     }
 }

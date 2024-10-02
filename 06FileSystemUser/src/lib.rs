@@ -8,12 +8,14 @@ pub mod console;
 mod lang_items;
 mod syscall;
 
-use buddy_system_allocator::LockedHeap;
-use syscall::*;
+extern crate alloc;
 #[macro_use]
 extern crate bitflags;
 
-const USER_HEAP_SIZE: usize = 16384;
+use buddy_system_allocator::LockedHeap;
+use syscall::*;
+
+const USER_HEAP_SIZE: usize = 32768;
 
 static mut HEAP_SPACE: [u8; USER_HEAP_SIZE] = [0; USER_HEAP_SIZE];
 
@@ -41,6 +43,22 @@ fn main() -> i32 {
     panic!("Cannot find main!");
 }
 
+bitflags! {
+    pub struct OpenFlags: u32 {
+        const RDONLY = 0;
+        const WRONLY = 1 << 0;
+        const RDWR = 1 << 1;
+        const CREATE = 1 << 9;
+        const TRUNC = 1 << 10;
+    }
+}
+
+pub fn open(path: &str, flags: OpenFlags) -> isize {
+    sys_open(path, flags.bits)
+}
+pub fn close(fd: usize) -> isize {
+    sys_close(fd)
+}
 pub fn read(fd: usize, buf: &mut [u8]) -> isize {
     sys_read(fd, buf)
 }
@@ -93,23 +111,4 @@ pub fn sleep(period_ms: usize) {
     while sys_get_time() < start + period_ms as isize {
         sys_yield();
     }
-}
-
-
-bitflags! {
-    pub struct OpenFlags: u32 {
-        const RDONLY    = 0;        // 表示以只读模式打开
-        const WRONLY    = 1 << 0;   // 表示以只写模式打开
-        const RDWR      = 1 << 1;   // 表示既可读又可以写
-        const CREATE    = 1 << 9;   // 表示创建文件，在找不到该文件的时候应创建文件，如果该文件已经存在则应将该文件的大小归零
-        const TRUNC     = 1 << 10;  // 表示在打开文件的时候应该情空文件的内容并将该文件的大小归0
-    }
-}
-
-pub fn open(path: &str, flags: OpenFlags) -> isize {
-    sys_open(path, flags.bits)
-}
-
-pub fn close(fd: usize) -> isize {
-    sys_close(fd)
 }

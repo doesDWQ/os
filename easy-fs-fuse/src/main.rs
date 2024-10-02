@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use easy_fs::{BlockDevice, EasyFileSystem};
+use easy_fs::{BlockDevice, DiskInodeType, EasyFileSystem};
 use std::{fs::{read_dir, File, OpenOptions}, io::{Read, Seek, SeekFrom, Write}, sync::{Arc, Mutex}};
 
 
@@ -25,11 +25,13 @@ impl BlockDevice for BlockFile {
 }
 
 fn main() {
+    // println!("Size of DiskInodeType: {}", size_of::<DiskInodeType>());
     easy_fs_pack().expect("Error when packing easy-fs!");
 }
 
 fn easy_fs_pack() -> std::io::Result<()> {
-    let matches = App::new("EasyFileSyste packer")
+        // 读取-s 和 -t参数
+    let matches = App::new("EasyFileSystem packer")
     .arg(
         Arg::with_name("source")
         .short("s")
@@ -42,10 +44,9 @@ fn easy_fs_pack() -> std::io::Result<()> {
         .short("t")
         .long("target")
         .takes_value(true)
-        .help("Executeable target dir(with backslash)"),
+        .help("Executable target dir(with backslash)"),
     )
     .get_matches();
-    
     let src_path = matches.value_of("source").unwrap();
     let target_path = matches.value_of("target").unwrap();
     println!("src_path={} \ntarget_path={}", src_path, target_path);
@@ -81,7 +82,6 @@ fn easy_fs_pack() -> std::io::Result<()> {
 
         inode.write_at(0, all_data.as_slice());
     }
-        
 
     Ok(())
 }
@@ -113,7 +113,7 @@ fn efs_test() -> std::io::Result<()> {
     filea.write_at(0, greet_str.as_bytes());
 
     let mut buffer = [0u8; 233];
-    let len = filea.read_at(0, &mut buffer);
+    let len: usize = filea.read_at(0, &mut buffer);
     assert_eq!(greet_str, core::str::from_utf8(&buffer[..len]).unwrap(),);
 
     let mut random_str_test = |len: usize| {
