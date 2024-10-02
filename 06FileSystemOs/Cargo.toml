@@ -16,5 +16,3 @@ sbi-rt = { version = "0.0.2", features = ["legacy"] }
 
 [profile.release]
 debug = true
-
-opt-level = 0

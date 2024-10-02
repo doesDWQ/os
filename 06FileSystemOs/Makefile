@@ -1,10 +1,11 @@
 .PHONY: build run
 
 build:
-	# cd ../05ProcessUser && make build
-	
+	cd ../06FileSystemUser && cargo build --release
+	cd ../easy-fs-fuse && cargo run --release -- -s ../06FileSystemUser/src/bin/ -t ../06FileSystemUser/target/riscv64gc-unknown-none-elf/release/
+
 	# 编译内核
-	cargo build --release
+	cd ../06FileSystemOs && cargo build --release
 
     # 去除elf中的头信息
 	# rust-objcopy --strip-all target/riscv64gc-unknown-none-elf/release/os -O binary target/riscv64gc-unknown-none-elf/release/os.bin

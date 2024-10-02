@@ -1,23 +1,29 @@
-// 该文件已人工核对过
-
+//! Memory management implementation
+//!
+//! SV39 page-based virtual-memory architecture for RV64 systems, and
+//! everything about memory management, like frame allocator, page table,
+//! map area and memory set, is implemented here.
+//!
+//! Every task or process has a memory_set to control its virtual memory.
 mod address;
-mod heap_allocator;
 mod frame_allocator;
+mod heap_allocator;
 mod memory_set;
 mod page_table;
 
-pub use address::{PhysAddr, PhysPageNum, VirtAddr, VirtPageNum};
-pub use address::{StepByOne, VPNRange};
-pub use frame_allocator::{frame_alloc,frame_dealloc, FrameTracker};
+use address::VPNRange;
+pub use address::{PhysAddr, PhysPageNum, StepByOne, VirtAddr, VirtPageNum};
+pub use frame_allocator::{frame_alloc, frame_dealloc, FrameTracker};
 pub use memory_set::remap_test;
-pub use memory_set::{MapPermission, MemorySet, KERNEL_SPACE,kernel_token};
-pub use page_table::{translated_byte_buffer, translated_refmut, PageTableEntry, translated_str, PTEFlags, PageTable, UserBuffer };
-
-
+pub use memory_set::{kernel_token, MapPermission, MemorySet, KERNEL_SPACE};
+use page_table::PTEFlags;
+pub use page_table::{
+    translated_byte_buffer, translated_ref, translated_refmut, translated_str, PageTable,
+    PageTableEntry, UserBuffer, UserBufferIterator,
+};
+/// initiate heap allocator, frame allocator and kernel space
 pub fn init() {
     heap_allocator::init_heap();
-    // heap_allocator::heap_test();
     frame_allocator::init_frame_allocator();
-    // frame_allocator::frame_allocator_test();
     KERNEL_SPACE.exclusive_access().activate();
 }

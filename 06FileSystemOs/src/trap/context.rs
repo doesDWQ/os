@@ -1,54 +1,48 @@
-// 该文件已人工核对过
-
+//! Implementation of [`TrapContext`]
 use riscv::register::sstatus::{self, Sstatus, SPP};
 
-
 #[repr(C)]
+#[derive(Debug)]
+///trap context structure containing sstatus, sepc and registers
 pub struct TrapContext {
-    // 保存32个 x 寄存器
+    /// general regs[0..31]
     pub x: [usize; 32],
-
-    // csr sstaus寄存器
+    /// CSR sstatus      
     pub sstatus: Sstatus,
-
-    // csr sepc
+    /// CSR sepc
     pub sepc: usize,
-
+    /// Addr of Page Table
     pub kernel_satp: usize,
-
+    /// kernel stack
     pub kernel_sp: usize,
-
+    /// Addr of trap_handler function
     pub trap_handler: usize,
 }
 
 impl TrapContext {
-    pub fn set_sp (&mut self, sp:usize) {
+    ///set stack pointer to x_2 reg (sp)
+    pub fn set_sp(&mut self, sp: usize) {
         self.x[2] = sp;
     }
-
-    // 初始化当前context 上下文
+    ///init app context
     pub fn app_init_context(
-        entry: usize, 
-        sp:usize,
+        entry: usize,
+        sp: usize,
         kernel_satp: usize,
         kernel_sp: usize,
         trap_handler: usize,
     ) -> Self {
-        // 获取当前特权等级
         let mut sstatus = sstatus::read();
-        // 修改为用户特权级别
+        // set CPU privilege to User after trapping back
         sstatus.set_spp(SPP::User);
-
         let mut cx = Self {
             x: [0; 32],
             sstatus,
-            sepc:entry,
+            sepc: entry,
             kernel_satp,
             kernel_sp,
             trap_handler,
         };
-
-        // 设置sp指针
         cx.set_sp(sp);
         cx
     }

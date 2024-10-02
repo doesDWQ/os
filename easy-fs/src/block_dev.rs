@@ -1,15 +1,9 @@
-
-
 use core::any::Any;
-
-
-// 块数据抽象接口
+/// Trait for block devices
+/// which reads and writes data in the unit of blocks
 pub trait BlockDevice: Send + Sync + Any {
-    // 在磁盘中读取数据
+    ///Read data form block to buffer
     fn read_block(&self, block_id: usize, buf: &mut [u8]);
-    // 往磁盘里面写数据
+    ///Write data from buffer to block
     fn write_block(&self, block_id: usize, buf: &[u8]);
 }
-
-
-
